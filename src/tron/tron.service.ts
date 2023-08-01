@@ -61,4 +61,16 @@ export class TronService {
 
     return transfers;
   }
+
+  async transferTo(
+    contractAddress: string,
+    amount: string,
+    from: string,
+    to: string,
+    privateKey: string,
+  ) {
+    const contract = await this.tronWeb.contract().at(contractAddress);
+    const decimals = await contract.decimals().call();
+    console.log(decimals);
+  }
 }
