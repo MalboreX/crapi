@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { TronTransferDto, TronWalletDto } from './dto';
+import { TronTransferDto, TronWalletDto, TronTransactionHash } from './dto';
 import TronWeb from 'tronweb';
 import TronGrid from 'trongrid';
 import { GetTransfersFromTrc20, GetTransfersFromTrx } from './tron.helper';
@@ -14,7 +14,6 @@ export class TronService {
       fullHost: process.env.TRONGRID_API,
     });
     this.tronGrid = new TronGrid(this.tronWeb);
-    this.tronWeb.setAddress(process.env.TRON_WALLET);
   }
 
   async createAccount(): Promise<TronWalletDto> {
@@ -69,8 +68,19 @@ export class TronService {
     from: string,
     to: string,
     privateKey: string,
-  ) {
-    const contract = await this.tronWeb.contract().at(contractAddress);
-    const decimals = await contract.decimals().call();
+  ): Promise<TronTransactionHash> {
+    const transaction = await this.tronWeb.transactionBuilder.sendToken(
+      to,
+      amount,
+      contractAddress,
+      from,
+    );
+
+    const signedTransaction = await this.tronWeb.trx.sign(
+      transaction,
+      privateKey,
+    );
+
+    return await this.tronWeb.trx.sendRawTransaction(signedTransaction);
   }
 }
