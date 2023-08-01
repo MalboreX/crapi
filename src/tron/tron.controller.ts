@@ -1,5 +1,5 @@
-import { Controller, Get, Post } from '@nestjs/common';
-import { TronWalletDto } from './dto';
+import { Controller, Get, Post, Body } from '@nestjs/common';
+import { TronWalletDto, GetTransfersToDto } from './dto';
 import { TronService } from './tron.service';
 
 @Controller('tron')
@@ -12,9 +12,8 @@ export class TronController {
   }
 
   @Get('transfersTo')
-  async getTransfersTo() {
-    return await this.tronService.getTransfersTo(
-      'TFgSXzq7uD5YXuSvQmDdm5Ne1xYRkRrkaY',
-    );
+  async getTransfersTo(@Body() dto: GetTransfersToDto) {
+    console.log(dto);
+    return await this.tronService.getTransfersTo(dto.walletAddress);
   }
 }
