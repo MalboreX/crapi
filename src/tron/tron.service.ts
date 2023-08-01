@@ -11,9 +11,10 @@ export class TronService {
 
   constructor() {
     this.tronWeb = new TronWeb({
-      fullHost: 'https://api.trongrid.io',
+      fullHost: process.env.TRONGRID_API,
     });
     this.tronGrid = new TronGrid(this.tronWeb);
+    this.tronWeb.setAddress(process.env.TRON_WALLET);
   }
 
   async createAccount(): Promise<TronWalletDto> {
@@ -71,6 +72,5 @@ export class TronService {
   ) {
     const contract = await this.tronWeb.contract().at(contractAddress);
     const decimals = await contract.decimals().call();
-    console.log(decimals);
   }
 }
