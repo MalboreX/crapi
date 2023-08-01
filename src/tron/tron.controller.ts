@@ -13,7 +13,6 @@ export class TronController {
 
   @Get('transfersTo')
   async getTransfersTo(@Body() dto: GetTransfersToDto) {
-    console.log(dto);
     return await this.tronService.getTransfersTo(dto.walletAddress);
   }
 }
