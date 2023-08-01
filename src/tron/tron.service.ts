@@ -51,6 +51,7 @@ export class TronService {
       trxTransactions,
       walletAddress,
     );
+
     const trc20Transfers = await GetTransfersFromTrc20(
       trc20Transactions,
       walletAddress,
