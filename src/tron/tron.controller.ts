@@ -18,7 +18,7 @@ export class TronController {
 
   @Post('transferTrc20')
   async transferTrc20(@Body() dto: PostTransferTrc20Dto) {
-    await this.tronService.transferTo(
+    return await this.tronService.transferTrc20(
       dto.contract,
       dto.amount,
       dto.from,

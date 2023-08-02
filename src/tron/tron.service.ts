@@ -62,25 +62,23 @@ export class TronService {
     return transfers;
   }
 
-  async transferTo(
+  async transferTrc20(
     contractAddress: string,
     amount: string,
     from: string,
     to: string,
     privateKey: string,
   ): Promise<TronTransactionHash> {
-    const transaction = await this.tronWeb.transactionBuilder.sendToken(
-      to,
-      amount,
-      contractAddress,
-      from,
-    );
+    this.tronWeb.setAddress(from);
+    this.tronWeb.setPrivateKey(privateKey);
 
-    const signedTransaction = await this.tronWeb.trx.sign(
-      transaction,
-      privateKey,
-    );
+    const contract = await this.tronWeb.contract().at(contractAddress);
+    const decimals = await contract.decimals().call();
+    const tokenAmount = parseFloat(amount) * 10 ** decimals;
+    const hash = await contract.transfer(to, tokenAmount).send();
 
-    return await this.tronWeb.trx.sendRawTransaction(signedTransaction);
+    return {
+      hash,
+    };
   }
 }
