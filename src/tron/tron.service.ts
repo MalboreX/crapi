@@ -81,4 +81,30 @@ export class TronService {
       hash,
     };
   }
+
+  async getBalance(walletAddress: string, contractAddress?: string) {
+    await this.tronWeb.setAddress(walletAddress);
+
+    const trxBalance = await this.tronWeb.trx.getBalance(walletAddress);
+
+    const result: any = {
+      trx: trxBalance,
+    };
+
+    if (contractAddress) {
+      const contractInstance = await this.tronWeb
+        .contract()
+        .at(contractAddress);
+
+      const decimals = await contractInstance.decimals().call();
+
+      const trc20Balance = await contractInstance
+        .balanceOf(walletAddress)
+        .call();
+
+      result.trc20 = trc20Balance.toNumber() / 10 ** decimals;
+    }
+
+    return result;
+  }
 }
