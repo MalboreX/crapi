@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { TronTransferDto, TronWalletDto, TronTransactionHash } from './dto';
+import { TronTransactionHash } from './dto';
 import TronWeb from 'tronweb';
 import TronGrid from 'trongrid';
 import { GetTransfersFromTrc20, GetTransfersFromTrx } from './tron.helper';
+import WalletDto from 'src/common/dto/out.post.Wallet.dto';
+import TransferDto from 'src/common/dto/out.get.Transfer.dto';
 
 @Injectable()
 export class TronService {
@@ -16,7 +18,7 @@ export class TronService {
     this.tronGrid = new TronGrid(this.tronWeb);
   }
 
-  async createAccount(): Promise<TronWalletDto> {
+  async createAccount(): Promise<WalletDto> {
     const account = await this.tronWeb.createAccount();
 
     return {
@@ -26,7 +28,7 @@ export class TronService {
     };
   }
 
-  async getTransfersTo(walletAddress: string): Promise<TronTransferDto[]> {
+  async getTransfersTo(walletAddress: string): Promise<TransferDto[]> {
     const options = {
       onlyTo: true,
       onlyConfirmed: true,
@@ -34,7 +36,7 @@ export class TronService {
       orderBy: 'timestamp,desc',
     };
 
-    const transfers: TronTransferDto[] = [];
+    const transfers: TransferDto[] = [];
 
     const trxTransactions = await this.tronGrid.account.getTransactions(
       walletAddress,

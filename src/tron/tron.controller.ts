@@ -1,18 +1,18 @@
 import { Controller, Get, Post, Body, Query } from '@nestjs/common';
 import {
-  TronWalletDto,
-  GetTransfersToDto,
   PostTransferTrc20Dto,
   GetBalanceDto,
 } from './dto';
 import { TronService } from './tron.service';
+import WalletDto from 'src/common/dto/out.post.Wallet.dto';
+import TransfersToDto from 'src/common/dto/in.get.TransfersTo.dto';
 
 @Controller('tron')
 export class TronController {
-  constructor(private tronService: TronService) {}
+  constructor(private tronService: TronService) { }
 
   @Get('transfersTo')
-  async getTransfersTo(@Query() dto: GetTransfersToDto) {
+  async getTransfersTo(@Query() dto: TransfersToDto) {
     return await this.tronService.getTransfersTo(dto.walletAddress);
   }
 
@@ -22,7 +22,7 @@ export class TronController {
   }
 
   @Post('createAccount')
-  async createAccount(): Promise<TronWalletDto> {
+  async createAccount(): Promise<WalletDto> {
     return await this.tronService.createAccount();
   }
 

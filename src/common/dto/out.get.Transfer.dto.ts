@@ -1,4 +1,4 @@
-interface TronTransferDto {
+interface TransferDto {
   amount: number;
   symbol: string;
   from: string;
@@ -6,4 +6,4 @@ interface TronTransferDto {
   contract?: string;
 }
 
-export default TronTransferDto;
+export default TransferDto;

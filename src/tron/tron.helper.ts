@@ -1,4 +1,4 @@
-import { TronTransferDto } from './dto';
+import TransferDto from "src/common/dto/out.get.Transfer.dto";
 
 const decimalsTrx = 6;
 
@@ -6,7 +6,7 @@ async function GetTransfersFromTrx(
   tronWeb,
   trxTransactions,
   walletAddress: string,
-): Promise<TronTransferDto[]> {
+): Promise<TransferDto[]> {
   const transfers = [];
   trxTransactions.data?.forEach((trxTransaction) => {
     trxTransaction?.raw_data?.contract?.forEach((data) => {
