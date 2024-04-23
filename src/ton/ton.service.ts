@@ -1,9 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { HttpCode, Inject, Injectable } from '@nestjs/common';
 
 import { TonClient, WalletContractV4 } from "@ton/ton";
 import { mnemonicNew, mnemonicToPrivateKey } from "@ton/crypto";
 import WalletDto from 'src/common/dto/out.post.Wallet.dto';
-import axios from 'axios';
+import axios, { HttpStatusCode } from 'axios';
 import TransferDto from 'src/common/dto/out.get.Transfer.dto';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
@@ -19,7 +19,7 @@ export class TonService {
             endpoint: 'https://toncenter.com/api/v2/jsonRPC',
         });
         this.toncenterUrl = 'https://toncenter.com/api/v3';
-        this.apiKey = '86c2c4882c48f8d1834de265b12b93641d33aa16edd0638a2671ee64e4c6571d';
+        this.apiKey = '7c06d152596254440162ebfb5f2347ce5c85a146c489b317343220ef41238a36';
     }
 
     async createAccount(): Promise<WalletDto> {
@@ -37,7 +37,7 @@ export class TonService {
         }
     }
 
-    async getTonTransfersTo(walletAddress: string, limit: number = 32, offset: number = 0, sort: String = 'desc'): Promise<TransferDto[]> {
+    async getTonTransfersTo(walletAddress: string, limit: number = 100, offset: number = 0, sort: String = 'desc'): Promise<TransferDto[]> {
         const response = await axios.get(`${this.toncenterUrl}/transactions?account=${walletAddress}&limit=${limit}&offset=${offset}&sort=${sort}&api_key=${this.apiKey}`);
         const transactions = response.data?.transactions;
 
@@ -48,10 +48,11 @@ export class TonService {
 
             const incomeDecimals = transaction.in_msg?.value;
             if (incomeDecimals) {
-                const incomeTon = incomeDecimals / 10 ** 7;
+                const tonDecimals = 9;
+                const incomeTon = incomeDecimals / 10 ** tonDecimals;
 
                 transfers.push({
-                    amount: incomeTon,
+                    amount: incomeTon.toFixed(tonDecimals) as any,
                     symbol: 'TON',
                     from: transaction.in_msg?.source,
                     txID: transaction.hash
@@ -62,7 +63,7 @@ export class TonService {
         return transfers;
     }
 
-    async getJettonTransfersTo(walletAddress: string, limit: number = 5, offset: number = 0, sort: string = 'desc'): Promise<TransferDto[]> {
+    async getJettonTransfersTo(walletAddress: string, limit: number = 10, offset: number = 0, sort: string = 'desc'): Promise<TransferDto[]> {
         const netTransactions = await axios.get(`${this.toncenterUrl}/jetton/transfers?address=${walletAddress}&limit=${limit}&offset=${offset}&sort=${sort}&direction=in&api_key=${this.apiKey}`);
         const transactions = netTransactions.data?.jetton_transfers;
 
@@ -76,7 +77,7 @@ export class TonService {
             const incomeValue = transaction.amount / 10 ** jetton.jetton_content?.decimals;
 
             transfers.push({
-                amount: incomeValue,
+                amount: incomeValue.toFixed(jetton.jetton_content?.decimals) as any,
                 symbol: jetton.jetton_content?.symbol,
                 from: transaction.source_wallet,
                 txID: transaction.transaction_hash,
@@ -87,9 +88,8 @@ export class TonService {
         return transfers;
     }
 
-    async getSpecificJettonTransfersTo(walletAddress: string, jettonAddress: string, limit: number = 12, offset: number = 0, sort: string = 'desc'): Promise<TransferDto[]> {
+    async getSpecificJettonTransfersTo(walletAddress: string, jettonAddress: string, limit: number = 100, offset: number = 0, sort: string = 'desc'): Promise<TransferDto[]> {
         const netTransactions = await axios.get(`${this.toncenterUrl}/jetton/transfers?address=${walletAddress}&jetton_master=${jettonAddress}&limit=${limit}&offset=${offset}&sort=${sort}&direction=in&api_key=${this.apiKey}`);
-        //const netJettonMaster = await axios.get(`${this.toncenterUrl}/jetton/masters?address=${jettonAddress}&limit=1&offset=0&api_key=${this.apiKey}`);
         const netJettonMaster = await this.GetJettonMasterFromCache(jettonAddress);
 
         const transactions = netTransactions.data?.jetton_transfers;
@@ -103,7 +103,7 @@ export class TonService {
             const incomeValue = transaction.amount / 10 ** jetton.jetton_content?.decimals;
 
             transfers.push({
-                amount: incomeValue,
+                amount: incomeValue.toFixed(jetton.jetton_content?.decimals) as any,
                 symbol: jetton.jetton_content?.symbol,
                 from: transaction.source_wallet,
                 txID: transaction.transaction_hash,
@@ -118,7 +118,8 @@ export class TonService {
         const jetton = await this.cacheManager.get(`TON_JETTON_${jettonAddress}`);
         if (jetton == null) {
             const netJettonMaster = await axios.get(`${this.toncenterUrl}/jetton/masters?address=${jettonAddress}&limit=1&offset=0&api_key=${this.apiKey}`);
-            await this.cacheManager.set(`TON_JETTON_${jettonAddress}`, netJettonMaster.data);
+            if (netJettonMaster.status === HttpStatusCode.Ok)
+                await this.cacheManager.set(`TON_JETTON_${jettonAddress}`, netJettonMaster.data);
 
             return netJettonMaster.data;
         }
