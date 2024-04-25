@@ -1,39 +1,45 @@
 import { HttpCode, Inject, Injectable } from '@nestjs/common';
 
-import { TonClient, WalletContractV4 } from "@ton/ton";
-import { mnemonicNew, mnemonicToPrivateKey } from "@ton/crypto";
 import WalletDto from 'src/common/dto/out.post.Wallet.dto';
 import axios, { HttpStatusCode } from 'axios';
 import TransferDto from 'src/common/dto/out.get.Transfer.dto';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import TonWeb from 'tonweb';
+import { mnemonicNew, mnemonicToPrivateKey, keyPairFromSeed } from '@ton/crypto';
+import { mnemonicToSeed } from 'tonweb-mnemonic';
 
 @Injectable()
 export class TonService {
-    private client: TonClient;
+    private client: TonWeb;
     private toncenterUrl: String;
-    private apiKey: String;
+    private apiKey: string;
+    private isMainnet: boolean;
+
+    private version: string;
 
     constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {
-        this.client = new TonClient({
-            endpoint: 'https://toncenter.com/api/v2/jsonRPC',
-        });
+        this.version = 'v3R2';
+        this.isMainnet = false;
+        this.apiKey = '66fe14ce0086b9728239edcc5e95538865bcbf503089ca18bf0ff926df150d05';
         this.toncenterUrl = 'https://toncenter.com/api/v3';
-        this.apiKey = '7c06d152596254440162ebfb5f2347ce5c85a146c489b317343220ef41238a36';
+        this.client = new TonWeb(new TonWeb.HttpProvider('https://testnet.toncenter.com/api/v2/jsonRPC', { apiKey: '66fe14ce0086b9728239edcc5e95538865bcbf503089ca18bf0ff926df150d05' }));
     }
 
     async createAccount(): Promise<WalletDto> {
+
         const mnemonics = await mnemonicNew();
         const keyPair = await mnemonicToPrivateKey(mnemonics);
 
-        const workchain = 0;
-        const wallet = WalletContractV4.create({ workchain, publicKey: keyPair.publicKey });
+        const WalletClass = this.client.wallet.all[this.version];
+        const wallet = new WalletClass(this.client.provider, { publicKey: keyPair.publicKey });
+        const walletAddress = await wallet.getAddress();
 
         return {
             privateKey: keyPair.secretKey.toString("base64"),
             publicKey: keyPair.publicKey.toString("base64"),
             mnemonics: mnemonics.join(' '),
-            address: wallet.address.toString(),
+            address: walletAddress.toString(true, true, true, !this.isMainnet)
         }
     }
 
@@ -125,5 +131,70 @@ export class TonService {
         }
 
         return jetton;
+    }
+
+    async sendTon(mnemonic: string, toAddress: string, amount: string) {
+        const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
+
+        const WalletClass = this.client.wallet.all[this.version];
+        const wallet = new WalletClass(this.client.provider, {
+            publicKey: keyPair.publicKey
+        });
+
+        const seqno = await wallet.methods.seqno().call() || 0;
+
+        const transfer = wallet.methods.transfer({
+            secretKey: keyPair.secretKey,
+            toAddress: toAddress,
+            amount: TonWeb.utils.toNano(amount), // 0.01 TON
+            seqno: seqno,
+            sendMode: 3,
+        });
+
+        const result = await transfer.send();
+
+        return result['@type'] === 'ok';
+
+    }
+
+    async sendJetton(mnemonic: string, contract: string, toAddress: string, amount: string) {
+        const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
+
+        const WalletClass = this.client.wallet.all[this.version];
+        const wallet = new WalletClass(this.client.provider, {
+            publicKey: keyPair.publicKey
+        });
+
+        let hotWalletAddress = await wallet.getAddress();
+
+        const jettonMinter = new TonWeb.token.jetton.JettonMinter(this.client.provider, {
+            address: contract
+        } as any);
+
+        const jettonWalletAddress = await jettonMinter.getJettonWalletAddress(hotWalletAddress);
+        const jettonWallet = new TonWeb.token.jetton.JettonWallet(this.client.provider, {
+            address: jettonWalletAddress
+        });
+
+        const seqno = await wallet.methods.seqno().call();
+
+        const toncoinAmount = TonWeb.utils.toNano('0.05');
+
+        const transfer = wallet.methods.transfer({
+            secretKey: keyPair.secretKey,
+            toAddress: jettonWalletAddress,
+            amount: toncoinAmount,
+            seqno: seqno,
+            payload: await jettonWallet.createTransferBody({
+                queryId: seqno, // any number
+                jettonAmount: amount, // jetton amount in units
+                toAddress: new TonWeb.utils.Address(toAddress),
+                responseAddress: hotWalletAddress
+            } as any)
+        });
+
+        const result = await transfer.send();
+
+        return result['@type'] === 'ok';
     }
 }

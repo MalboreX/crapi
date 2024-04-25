@@ -26,4 +26,18 @@ export class TonController {
     async getSpecificJettonTransfersTo(@Query() dto: TransfersToDto) {
         return await this.tonService.getSpecificJettonTransfersTo(dto.walletAddress, dto.contract);
     }
+
+    @Post('sendJetton')
+    async sendJetton(@Body() dto: SendJettonDto) {
+        return {
+            'status': await this.tonService.sendJetton(dto.mnemonic, dto.contract, dto.toAddress, dto.amount)
+        }
+    }
+
+    @Post('sendTon')
+    async sendTon(@Body() dto: SendTonDto) {
+        return {
+            'status': await this.tonService.sendTon(dto.mnemonic, dto.toAddress, dto.amount)
+        }
+    }
 }
