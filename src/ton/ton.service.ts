@@ -22,8 +22,8 @@ export class TonService {
         this.version = 'v3R2';
         this.isMainnet = false;
         this.apiKey = '66fe14ce0086b9728239edcc5e95538865bcbf503089ca18bf0ff926df150d05';
-        this.toncenterUrl = 'https://toncenter.com/api/v3';
-        this.client = new TonWeb(new TonWeb.HttpProvider('https://testnet.toncenter.com/api/v2/jsonRPC', { apiKey: '66fe14ce0086b9728239edcc5e95538865bcbf503089ca18bf0ff926df150d05' }));
+        this.toncenterUrl = this.isMainnet ? 'https://toncenter.com/api/v3' : 'https://testnet.toncenter.com/api/v3';
+        this.client = new TonWeb(new TonWeb.HttpProvider(this.isMainnet ? 'https://toncenter.com/api/v2/jsonRPC' : 'https://testnet.toncenter.com/api/v2/jsonRPC', { apiKey: this.apiKey }));
     }
 
     async createAccount(): Promise<WalletDto> {
@@ -176,7 +176,7 @@ export class TonService {
             address: jettonWalletAddress
         });
 
-        const seqno = await wallet.methods.seqno().call();
+        const seqno = await wallet.methods.seqno().call() || 0;
 
         const toncoinAmount = TonWeb.utils.toNano('0.05');
 
