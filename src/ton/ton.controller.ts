@@ -40,4 +40,18 @@ export class TonController {
             'status': await this.tonService.sendTon(dto.mnemonic, dto.toAddress, dto.amount)
         }
     }
+
+    @Get('balanceInTon')
+    async getTonBalance(@Query() dto) {
+        return {
+            balance: await this.tonService.getTonBalance(dto.walletAddress)
+        };
+    }
+
+    @Get('balanceInJetton')
+    async getJettonBalance(@Query() dto) {
+        return {
+            balance: await this.tonService.getJettonBalance(dto.walletAddress, dto.contract)
+        };
+    }
 }

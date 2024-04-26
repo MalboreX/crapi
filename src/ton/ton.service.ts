@@ -201,4 +201,17 @@ export class TonService {
 
         return result['@type'] === 'ok';
     }
+
+    async getTonBalance(walletAddress: string) {
+        return await this.client.provider.getBalance(walletAddress) / 10 ** 9
+    }
+
+    async getJettonBalance(walletAddress: string, contract: string) {
+        const netJettonMaster = await this.GetJettonMasterFromCache(contract);
+        const jetton = netJettonMaster.jetton_masters[0];
+        const netBalance = await axios.get(`${this.toncenterUrl}/jetton/wallets?owner_address=${walletAddress}&jetton_address=${contract}&limit=128&offset=0&api_key=${this.apiKey}`);
+        const balancesInJettons = netBalance.data?.jetton_wallets;
+        const wallet = balancesInJettons[0];
+        return wallet.balance / 10 ** jetton.jetton_content?.decimals;
+    }
 }
