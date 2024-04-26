@@ -180,6 +180,10 @@ export class TonService {
 
         const toncoinAmount = TonWeb.utils.toNano('0.05');
 
+        const netJettonMaster = await this.GetJettonMasterFromCache(contract);
+        const jetton = netJettonMaster.jetton_masters[0];
+        const jettonAmountToSent = parseFloat(amount) / 10 ** jetton.jetton_content?.decimals;
+
         const transfer = wallet.methods.transfer({
             secretKey: keyPair.secretKey,
             toAddress: jettonWalletAddress,
@@ -187,7 +191,7 @@ export class TonService {
             seqno: seqno,
             payload: await jettonWallet.createTransferBody({
                 queryId: seqno, // any number
-                jettonAmount: amount, // jetton amount in units
+                jettonAmount: jettonAmountToSent, // jetton amount in units
                 toAddress: new TonWeb.utils.Address(toAddress),
                 responseAddress: hotWalletAddress
             } as any)
