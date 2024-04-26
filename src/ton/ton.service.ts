@@ -52,6 +52,8 @@ export class TonService {
         for (let i = 0; i < transactions.length; i++) {
             const transaction = transactions[i];
 
+            if (transaction.in_msg.bounce) continue;
+
             const incomeDecimals = transaction.in_msg?.value;
             if (incomeDecimals) {
                 const tonDecimals = 9;
@@ -143,12 +145,13 @@ export class TonService {
 
         const seqno = await wallet.methods.seqno().call() || 0;
 
+        const addressHex = new TonWeb.utils.Address(toAddress);
+
         const transfer = wallet.methods.transfer({
             secretKey: keyPair.secretKey,
-            toAddress: toAddress,
-            amount: TonWeb.utils.toNano(amount), // 0.01 TON
+            toAddress: addressHex.toString(false),
+            amount: TonWeb.utils.toNano(amount),
             seqno: seqno,
-            sendMode: 3,
         });
 
         const result = await transfer.send();
@@ -182,7 +185,7 @@ export class TonService {
 
         const netJettonMaster = await this.GetJettonMasterFromCache(contract);
         const jetton = netJettonMaster.jetton_masters[0];
-        const jettonAmountToSent = parseFloat(amount) / 10 ** jetton.jetton_content?.decimals;
+        const jettonAmountToSent = parseFloat(amount) * 10 ** jetton.jetton_content?.decimals;
 
         const transfer = wallet.methods.transfer({
             secretKey: keyPair.secretKey,
