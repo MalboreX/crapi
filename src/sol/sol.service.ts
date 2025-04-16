@@ -4,6 +4,7 @@ const { Connection, Keypair } = require('@solana/web3.js');
 const bip39 = require('bip39');
 const { derivePath } = require('ed25519-hd-key');
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import bs58 from 'bs58';
 
 @Injectable()
 export class SolService {
@@ -20,7 +21,7 @@ export class SolService {
         const { key } = derivePath(derivationPath, seed.toString('hex'));
         const keypair = Keypair.fromSeed(key.slice(0, 32)); // Используем первые 32 байта
         const publicKey = keypair.publicKey.toString();
-        const privateKey = keypair.secretKey;
+        const privateKey = bs58.encode(keypair.secretKey);
 
         return {
             address: publicKey,
