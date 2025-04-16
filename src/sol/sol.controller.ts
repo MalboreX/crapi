@@ -9,4 +9,14 @@ export class SolController {
     async createAccount() {
         return await this.solService.createAccount();
     }
+
+    @Get('incomingSol')
+    async getIncomingSol(@Query() query) {
+        return await this.solService.getIncomingSolTransactions(query.wallet);
+    }
+
+    @Get('incomingSpl')
+    async getIncomingSpl(@Query() query) {
+        return await this.solService.getIncomingSplTransactions(query.wallet, query.programId, query.mint);
+    }
 }
