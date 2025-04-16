@@ -33,14 +33,13 @@ export class SolService {
 
     async getIncomingSolTransactions(wallet: string) {
         const transactions = [];
-
         try {
             const walletAddress = new PublicKey(wallet);
 
-            const signatures = await this.connection.getSignaturesForAddress(walletAddress, { limit: 1000 });
+            const signatures = await this.connection.getSignaturesForAddress(walletAddress, { limit: 10 });
             const signatureList = signatures.map((transaction) => transaction.signature);
             const transactionDetails = await this.connection.getParsedTransactions(signatureList, { maxSupportedTransactionVersion: 0 });
-
+            console.log('123');
             for (const tx of transactionDetails) {
                 const { transaction, meta } = tx;
                 const preBalances = meta.preBalances;
@@ -77,7 +76,7 @@ export class SolService {
                 new PublicKey(programId)
             );
 
-            const signatures = await this.connection.getSignaturesForAddress(associatedAccount, { limit: 1000 });
+            const signatures = await this.connection.getSignaturesForAddress(associatedAccount, { limit: 10 });
             const signatureList = signatures.map((transaction) => transaction.signature);
             const transactionDetails = await this.connection.getParsedTransactions(signatureList, { maxSupportedTransactionVersion: 0 });
 
