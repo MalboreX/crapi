@@ -84,7 +84,6 @@ export class SolService {
                 for (const instr of tx.transaction.message.instructions) {
                     if (instr.programId.toBase58() == programId) {
                         if (instr.parsed.info.destination == associatedAccount.toBase58() && instr.parsed.info.mint == mint) {
-                            console.log(tx);
                             transactions.push({
                                 txId: tx.transaction.signatures[0],
                                 amount: instr.parsed.info.tokenAmount.uiAmount,
