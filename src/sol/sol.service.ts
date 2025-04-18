@@ -155,6 +155,9 @@ export class SolService {
         const wallet = Keypair.fromSecretKey(secretKey);
         const programIdKey = new PublicKey(programId);
 
+        const mintInfo = await getMint(this.connection, new PublicKey(tokenMintAddress), 'confirmed', programIdKey);
+        const decimals = mintInfo.decimals;
+
         const senderTokenAccount = await getOrCreateAssociatedTokenAccount(
             this.connection,
             wallet,
@@ -183,7 +186,7 @@ export class SolService {
             senderTokenAccount.address,
             recipientTokenAccount.address,
             wallet.publicKey,
-            amount,
+            amount ** decimals,
             [],
             programIdKey
         );
