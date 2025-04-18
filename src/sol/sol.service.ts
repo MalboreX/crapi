@@ -121,12 +121,12 @@ export class SolService {
 
         const tokenAccount = await getAccount(this.connection, associatedTokenAddress, 'confirmed', tokenProgramPublicKey);
 
-        const balanceBigInt = tokenAccount.amount; // BigInt
-        const divisor = BigInt(10 ** decimals);    // Делитель как BigInt
+        const balanceBigInt = tokenAccount.amount;
+        const divisor = BigInt(10 ** decimals);
         const humanReadableBalance = Number(balanceBigInt / divisor);
 
         return {
             balace: humanReadableBalance
-        }
+        };
     }
 }
