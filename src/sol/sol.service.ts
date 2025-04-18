@@ -186,7 +186,7 @@ export class SolService {
             senderTokenAccount.address,
             recipientTokenAccount.address,
             wallet.publicKey,
-            amount ** decimals,
+            amount * (10 ** decimals),
             [],
             programIdKey
         );
