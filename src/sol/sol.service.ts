@@ -3,7 +3,7 @@ import { PublicKey } from '@solana/web3.js';
 const { Connection, Keypair } = require('@solana/web3.js');
 const bip39 = require('bip39');
 const { derivePath } = require('ed25519-hd-key');
-import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { getAssociatedTokenAddress, getAccount, getMint } from '@solana/spl-token';
 import bs58 from 'bs58';
 
 @Injectable()
@@ -33,33 +33,30 @@ export class SolService {
 
     async getIncomingSolTransactions(wallet: string) {
         const transactions = [];
-        try {
-            const walletAddress = new PublicKey(wallet);
 
-            const signatures = await this.connection.getSignaturesForAddress(walletAddress, { limit: 10 });
-            const signatureList = signatures.map((transaction) => transaction.signature);
-            const transactionDetails = await this.connection.getParsedTransactions(signatureList, { maxSupportedTransactionVersion: 0 });
-            console.log('123');
-            for (const tx of transactionDetails) {
-                const { transaction, meta } = tx;
-                const preBalances = meta.preBalances;
-                const postBalances = meta.postBalances;
+        const walletAddress = new PublicKey(wallet);
 
-                const walletIndex = transaction.message.accountKeys.findIndex(
-                    key => key.pubkey.toBase58() === walletAddress.toBase58()
-                );
+        const signatures = await this.connection.getSignaturesForAddress(walletAddress, { limit: 10 });
+        const signatureList = signatures.map((transaction) => transaction.signature);
+        const transactionDetails = await this.connection.getParsedTransactions(signatureList, { maxSupportedTransactionVersion: 0 });
 
-                if (walletIndex !== -1 && postBalances[walletIndex] > preBalances[walletIndex]) {
-                    const amountReceived = (postBalances[walletIndex] - preBalances[walletIndex]) / 1e9;
-                    transactions.push({
-                        txId: transaction.signatures[0],
-                        amount: amountReceived,
-                        sender: transaction.message.accountKeys[0].pubkey.toBase58(),
-                    });
-                }
+        for (const tx of transactionDetails) {
+            const { transaction, meta } = tx;
+            const preBalances = meta.preBalances;
+            const postBalances = meta.postBalances;
+
+            const walletIndex = transaction.message.accountKeys.findIndex(
+                key => key.pubkey.toBase58() === walletAddress.toBase58()
+            );
+
+            if (walletIndex !== -1 && postBalances[walletIndex] > preBalances[walletIndex]) {
+                const amountReceived = (postBalances[walletIndex] - preBalances[walletIndex]) / 1e9;
+                transactions.push({
+                    txId: transaction.signatures[0],
+                    amount: amountReceived,
+                    sender: transaction.message.accountKeys[0].pubkey.toBase58(),
+                });
             }
-        } catch (error) {
-            console.error('Ошибка при получении транзакций:', error);
         }
 
         return transactions;
@@ -68,38 +65,68 @@ export class SolService {
     async getIncomingSplTransactions(wallet: string, programId: string, mint: string) {
         const transactions = [];
 
-        try {
-            const associatedAccount = await getAssociatedTokenAddress(
-                new PublicKey(mint),
-                new PublicKey(wallet),
-                false,
-                new PublicKey(programId)
-            );
 
-            const signatures = await this.connection.getSignaturesForAddress(associatedAccount, { limit: 10 });
-            const signatureList = signatures.map((transaction) => transaction.signature);
-            const transactionDetails = await this.connection.getParsedTransactions(signatureList, { maxSupportedTransactionVersion: 0 });
+        const associatedAccount = await getAssociatedTokenAddress(
+            new PublicKey(mint),
+            new PublicKey(wallet),
+            false,
+            new PublicKey(programId)
+        );
 
-            for (const tx of transactionDetails) {
-                for (const instr of tx.transaction.message.instructions) {
-                    if (instr.programId.toBase58() == programId) {
-                        if (instr.parsed.info.destination == associatedAccount.toBase58() && instr.parsed.info.mint == mint) {
-                            transactions.push({
-                                txId: tx.transaction.signatures[0],
-                                amount: instr.parsed.info.tokenAmount.uiAmount,
-                                sender: tx.transaction.message.accountKeys[0].pubkey.toBase58(),
-                            });
-                        }
+        const signatures = await this.connection.getSignaturesForAddress(associatedAccount, { limit: 10 });
+        const signatureList = signatures.map((transaction) => transaction.signature);
+        const transactionDetails = await this.connection.getParsedTransactions(signatureList, { maxSupportedTransactionVersion: 0 });
+
+        for (const tx of transactionDetails) {
+            for (const instr of tx.transaction.message.instructions) {
+                if (instr.programId.toBase58() == programId) {
+                    if (instr.parsed.info.destination == associatedAccount.toBase58() && instr.parsed.info.mint == mint) {
+                        transactions.push({
+                            txId: tx.transaction.signatures[0],
+                            amount: instr.parsed.info.tokenAmount.uiAmount,
+                            sender: tx.transaction.message.accountKeys[0].pubkey.toBase58(),
+                        });
                     }
                 }
             }
-
-        } catch (error) {
-            console.error('Ошибка при получении транзакций:', error);
         }
 
         return transactions;
     }
 
+    async getBalanceInSol(wallet: string) {
+        const publicKey = new PublicKey(wallet);
+        const balanceInLamports = await this.connection.getBalance(publicKey);
+        const balanceInSOL = balanceInLamports / 1_000_000_000;
 
+        return {
+            balance: balanceInSOL
+        };
+    }
+
+    async getBalanceInSpl(wallet: string, mint: string, programId: string) {
+        const walletPublicKey = new PublicKey(wallet);
+        const mintPublicKey = new PublicKey(mint);
+        const tokenProgramPublicKey = new PublicKey(programId);
+
+        const associatedTokenAddress = await getAssociatedTokenAddress(
+            mintPublicKey,
+            walletPublicKey,
+            false,
+            tokenProgramPublicKey
+        );
+
+        const mintInfo = await getMint(this.connection, mintPublicKey, 'confirmed', tokenProgramPublicKey);
+        const decimals = mintInfo.decimals;
+
+        const tokenAccount = await getAccount(this.connection, associatedTokenAddress, 'confirmed', tokenProgramPublicKey);
+
+        const balanceBigInt = tokenAccount.amount; // BigInt
+        const divisor = BigInt(10 ** decimals);    // Делитель как BigInt
+        const humanReadableBalance = Number(balanceBigInt / divisor);
+
+        return {
+            balace: humanReadableBalance
+        }
+    }
 }
