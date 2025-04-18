@@ -29,4 +29,14 @@ export class SolController {
     async balanceInSpl(@Query() query) {
         return await this.solService.getBalanceInSpl(query.wallet, query.mint, query.programId);
     }
+
+    @Post('sendSol')
+    async sendSol(@Body() query) {
+        return await this.solService.transferSol(query.key, query.receipent, query.amount);
+    }
+
+    @Post('sendSpl')
+    async sendSpl(@Body() query) {
+        return await this.solService.transferSplToken(query.key, query.receipent, query.mint, query.programId, query.amount);
+    }
 }

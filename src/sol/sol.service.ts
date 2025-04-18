@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PublicKey } from '@solana/web3.js';
-const { Connection, Keypair } = require('@solana/web3.js');
+const { Connection, Keypair, Transaction, SystemProgram, LAMPORTS_PER_SOL, sendAndConfirmTransaction } = require('@solana/web3.js');
 const bip39 = require('bip39');
 const { derivePath } = require('ed25519-hd-key');
-import { getAssociatedTokenAddress, getAccount, getMint } from '@solana/spl-token';
+import { getAssociatedTokenAddress, getAccount, getMint, getOrCreateAssociatedTokenAccount, createTransferInstruction } from '@solana/spl-token';
 import bs58 from 'bs58';
 
 @Injectable()
@@ -128,5 +128,87 @@ export class SolService {
         return {
             balance: humanReadableBalance
         };
+    }
+
+    async transferSol(secretKeyBase58: string, recipientPublicKey: string, amountInSol: number) {
+        try {
+            const secretKey = bs58.decode(secretKeyBase58);
+            const wallet = Keypair.fromSecretKey(secretKey);
+
+            const transaction = new Transaction().add(
+                SystemProgram.transfer({
+                    fromPubkey: wallet.publicKey,
+                    toPubkey: recipientPublicKey,
+                    lamports: amountInSol * LAMPORTS_PER_SOL,
+                })
+            );
+
+            await sendAndConfirmTransaction(this.connection, transaction, [wallet]);
+
+            return {
+                status: 'SUCCESS'
+            }
+
+        } catch (error) {
+            return {
+                status: 'FAILED',
+                message: error.message
+            }
+        }
+    }
+
+    async transferSplToken(secretKeyBase58: string, recipientPublicKey: string, tokenMintAddress: string, programId: string, amount: number) {
+        try {
+            const secretKey = bs58.decode(secretKeyBase58);
+            const wallet = Keypair.fromSecretKey(secretKey);
+            const programIdKey = new PublicKey(programId);
+
+            const senderTokenAccount = await getOrCreateAssociatedTokenAccount(
+                this.connection,
+                wallet,
+                new PublicKey(tokenMintAddress),
+                wallet.publicKey,
+                false,
+                'confirmed',
+                null,
+                programIdKey
+            );
+
+
+            const recipientTokenAccount = await getOrCreateAssociatedTokenAccount(
+                this.connection,
+                wallet,
+                new PublicKey(tokenMintAddress),
+                new PublicKey(recipientPublicKey),
+                false,
+                'confirmed',
+                null,
+                programIdKey
+            );
+
+
+            const transferInstruction = createTransferInstruction(
+                senderTokenAccount.address,
+                recipientTokenAccount.address,
+                wallet.publicKey,
+                amount,
+                [],
+                programIdKey
+            );
+
+            const transaction = new Transaction().add(transferInstruction);
+            await sendAndConfirmTransaction(this.connection, transaction, [wallet]);
+
+            return {
+                status: 'SUCCESS'
+            };
+
+        } catch (error) {
+            console.log(error);
+            return {
+                status: 'FAILED',
+                message: error.message
+            }
+        }
     }
 }
