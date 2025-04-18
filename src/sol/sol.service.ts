@@ -126,7 +126,7 @@ export class SolService {
         const humanReadableBalance = Number(balanceBigInt / divisor);
 
         return {
-            balace: humanReadableBalance
+            balance: humanReadableBalance
         };
     }
 }
